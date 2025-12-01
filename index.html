@@ -494,12 +494,18 @@
                 <div class="result-card" id="resultCardA" style="display: none;">
                     <h3>🔵 A線 往復較差チェック結果</h3>
                     <div id="resultA"></div>
+                    <button class="btn btn-large" onclick="exportToText('A')" style="margin-top: 15px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        💾 結果を保存
+                    </button>
                 </div>
                 
                 <!-- B線結果 -->
                 <div class="result-card route-b" id="resultCardB" style="display: none;">
                     <h3>🟢 B線 往復較差チェック結果</h3>
                     <div id="resultB"></div>
+                    <button class="btn btn-success btn-large" onclick="exportToText('B')" style="margin-top: 15px;">
+                        💾 結果を保存
+                    </button>
                 </div>
             </div>
         </div>
@@ -525,105 +531,6 @@
             
             document.getElementById('startKm' + route + '2').value = endKm1;
             document.getElementById('endKm' + route + '2').value = startKm1;
-        }
-
-        function getNextStationName(routeId) {
-            const table = document.getElementById('dataTable' + routeId);
-            const rows = table.getElementsByTagName('tr');
-            
-            console.log('getNextStationName called for:', routeId);
-            console.log('Number of rows:', rows.length);
-            
-            // 復路の場合は空文字を返す
-            const isReturn = routeId.endsWith('2');
-            if (isReturn) {
-                return '';
-            }
-            
-            // テーブルが空の場合はデフォルト値
-            if (rows.length === 0) {
-                console.log('No rows, returning default');
-                if (routeId.startsWith('A')) {
-                    return 'A-1';
-                } else if (routeId.startsWith('B')) {
-                    return 'B-1';
-                }
-                return '';
-            }
-            
-            // 最後の行の測点名を取得
-            const lastRow = rows[rows.length - 1];
-            const inputs = lastRow.getElementsByTagName('input');
-            
-            console.log('Number of inputs in last row:', inputs.length);
-            
-            // 入力フィールドがない場合
-            if (!inputs || inputs.length === 0) {
-                console.log('No inputs found');
-                if (routeId.startsWith('A')) {
-                    return 'A-1';
-                } else if (routeId.startsWith('B')) {
-                    return 'B-1';
-                }
-                return '';
-            }
-            
-            const lastInput = inputs[0];
-            const lastName = (lastInput && lastInput.value) ? lastInput.value.trim() : '';
-            
-            console.log('Last station name:', lastName);
-            
-            // 最後の行が空の場合
-            if (!lastName) {
-                console.log('Last name is empty');
-                if (routeId.startsWith('A')) {
-                    return 'A-1';
-                } else if (routeId.startsWith('B')) {
-                    return 'B-1';
-                }
-                return '';
-            }
-            
-            // 測点名のパターンマッチングとインクリメント
-            
-            // パターン1: A-1, B-2, A-10 など (文字-数字)
-            let match = lastName.match(/^([A-Za-z]+)-(\d+)$/);
-            if (match) {
-                const prefix = match[1];
-                const num = parseInt(match[2]);
-                const result = prefix + '-' + (num + 1);
-                console.log('Pattern 1 matched:', lastName, '->', result);
-                return result;
-            }
-            
-            // パターン2: KBM1, TP1, A1 など (文字+数字、ハイフンなし)
-            match = lastName.match(/^([A-Za-z]+)(\d+)$/);
-            if (match) {
-                const prefix = match[1];
-                const num = parseInt(match[2]);
-                const result = prefix + (num + 1);
-                console.log('Pattern 2 matched:', lastName, '->', result);
-                return result;
-            }
-            
-            // パターン3: 数字のみ (1, 2, 3...)
-            match = lastName.match(/^(\d+)$/);
-            if (match) {
-                const num = parseInt(match[1]);
-                const result = (num + 1).toString();
-                console.log('Pattern 3 matched:', lastName, '->', result);
-                return result;
-            }
-            
-            // どのパターンにも一致しない場合はデフォルト
-            console.log('No pattern matched, using default');
-            if (routeId.startsWith('A')) {
-                return 'A-' + (rows.length + 1);
-            } else if (routeId.startsWith('B')) {
-                return 'B-' + (rows.length + 1);
-            }
-            
-            return '';
         }
 
         function addRow(routeId) {
@@ -690,8 +597,6 @@
                         }
                     }
                 }
-                
-                console.log('Calculated next name:', nextStationName);
             }
             
             // 行を追加
@@ -837,6 +742,12 @@
                 return;
             }
             
+            // キロ程を保存
+            data1.startKm = document.getElementById('startKm' + route + '1').value;
+            data1.endKm = document.getElementById('endKm' + route + '1').value;
+            data2.startKm = document.getElementById('startKm' + route + '2').value;
+            data2.endKm = document.getElementById('endKm' + route + '2').value;
+            
             displayRouteComparison(route, data1, data2);
             document.getElementById('resultCard' + route).style.display = 'block';
             
@@ -962,6 +873,103 @@
             html += '</div>';
             
             document.getElementById('result' + route).innerHTML = html;
+            
+            // 結果を保存（テキスト出力用）
+            calculationResults[route] = {
+                data1: data1,
+                data2: data2,
+                roundtripDiff: roundtripDiff,
+                tolerance: tolerance,
+                isPassing: isPassing,
+                stationChecks: stationChecks,
+                allStationsPassed: allStationsPassed
+            };
+        }
+        
+        // 計算結果を保持
+        let calculationResults = {
+            A: null,
+            B: null
+        };
+        
+        function exportToText(route) {
+            const result = calculationResults[route];
+            if (!result) {
+                alert('計算結果がありません');
+                return;
+            }
+            
+            const routeName = route === 'A' ? 'A線' : 'B線';
+            const date = new Date().toLocaleDateString('ja-JP');
+            const time = new Date().toLocaleTimeString('ja-JP');
+            
+            let text = '';
+            text += '='.repeat(50) + '\n';
+            text += '水準測量計算書\n';
+            text += routeName + ' 往復較差チェック結果\n';
+            text += '作成日時: ' + date + ' ' + time + '\n';
+            text += '='.repeat(50) + '\n\n';
+            
+            // 往路データ
+            text += '【往路】\n';
+            text += '  開始キロ程: ' + result.data1.startKm + '\n';
+            text += '  終了キロ程: ' + result.data1.endKm + '\n';
+            text += '  視準距離: ' + result.data1.distance.toFixed(3) + ' km\n';
+            text += '  許容値: ±' + result.data1.tolerance.toFixed(2) + ' mm\n';
+            text += '  比高差合計: ' + result.data1.totalHeightDiff.toFixed(4) + ' m\n\n';
+            
+            text += '  測点データ:\n';
+            result.data1.stations.forEach((station, i) => {
+                text += '    ' + station.name + '\n';
+                text += '      後視: ' + (station.backsight ? station.backsight.toFixed(4) + ' m' : '-') + '\n';
+                text += '      前視: ' + (station.foresight ? station.foresight.toFixed(4) + ' m' : '-') + '\n';
+            });
+            text += '\n';
+            
+            // 復路データ
+            text += '【復路】\n';
+            text += '  開始キロ程: ' + result.data2.startKm + '\n';
+            text += '  終了キロ程: ' + result.data2.endKm + '\n';
+            text += '  視準距離: ' + result.data2.distance.toFixed(3) + ' km\n';
+            text += '  許容値: ±' + result.data2.tolerance.toFixed(2) + ' mm\n';
+            text += '  比高差合計: ' + result.data2.totalHeightDiff.toFixed(4) + ' m\n\n';
+            
+            text += '  測点データ:\n';
+            result.data2.stations.forEach((station, i) => {
+                text += '    ' + station.name + '\n';
+                text += '      後視: ' + (station.backsight ? station.backsight.toFixed(4) + ' m' : '-') + '\n';
+                text += '      前視: ' + (station.foresight ? station.foresight.toFixed(4) + ' m' : '-') + '\n';
+            });
+            text += '\n';
+            
+            // 往復較差結果
+            text += '【往復較差チェック結果】\n';
+            text += '  往復較差: ' + result.roundtripDiff.toFixed(4) + ' m (' + (result.roundtripDiff * 1000).toFixed(2) + ' mm)\n';
+            text += '  許容値: ±' + result.tolerance.toFixed(2) + ' mm\n';
+            text += '  判定: ' + (result.isPassing ? '✓ 合格' : '✗ 不合格') + '\n\n';
+            
+            // 測点別較差
+            text += '【測点別往復較差】（許容値±0.0005m）\n';
+            result.stationChecks.forEach((check, i) => {
+                const status = check.passed ? '✓ OK' : '✗ NG';
+                text += '  ' + check.station + '\n';
+                text += '    往路: ' + check.forwardDiff.toFixed(4) + ' m\n';
+                text += '    復路: ' + check.backwardDiff.toFixed(4) + ' m\n';
+                text += '    較差: ' + check.diff.toFixed(4) + ' m  [' + status + ']\n';
+            });
+            text += '\n';
+            text += '  測点別判定: ' + (result.allStationsPassed ? '✓ 全測点OK' : '✗ 一部NG') + '\n';
+            text += '\n' + '='.repeat(50) + '\n';
+            
+            // テキストファイルとしてダウンロード
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            const filename = routeName + '_水準測量計算書_' + date.replace(/\//g, '') + '.txt';
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            
+            alert('結果をテキストファイルとして保存しました');
         }
     </script>
 </body>

@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>水準測量計算 - スマホ版</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'メイリオ', Meiryo, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h1 { font-size: 1.4em; margin-bottom: 5px; }
+        .header p { font-size: 0.85em; opacity: 0.9; }
+        .content { padding: 15px; }
+        
+        .route-group { margin-bottom: 25px; }
+        .route-group-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .route-group-header.route-b {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+        
+        .directions-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .direction-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+        }
+        .direction-section h3 {
+            color: #667eea;
+            margin-bottom: 12px;
+            font-size: 1em;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .route-group.route-b .direction-section h3 { color: #11998e; }
+        
+        .form-group { margin-bottom: 12px; }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.9em;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px; /* iOS zoom prevention */
+            background: white;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        input:disabled {
+            background: #e9ecef;
+            color: #6c757d;
+        }
+        
+        /* 数値入力の矢印を非表示（スマホで見やすく） */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+        
+        .data-table-container {
+            overflow-x: auto;
+            margin: 10px 0;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85em;
+            min-width: 100%;
+        }
+        .data-table th, .data-table td {
+            padding: 8px 4px;
+            text-align: center;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .data-table th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+            font-size: 0.8em;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .route-group.route-b .data-table th { background: #11998e; }
+        .data-table input {
+            width: 100%;
+            padding: 8px 4px;
+            font-size: 0.9em;
+            text-align: center;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+        .data-table td:first-child { min-width: 70px; }
+        .data-table td:nth-child(2),
+        .data-table td:nth-child(3) { min-width: 90px; }
+        .data-table td:last-child { min-width: 50px; }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 50px;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            margin: 4px;
+            display: inline-block;
+            touch-action: manipulation;
+        }
+        .btn:active {
+            transform: scale(0.95);
+        }
+        .btn-success { 
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            box-shadow: 0 4px 15px rgba(17, 153, 142, 0.4);
+        }
+        .btn-danger { 
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            box-shadow: 0 4px 15px rgba(235, 51, 73, 0.4);
+        }
+        .btn-small { padding: 6px 12px; font-size: 0.8em; }
+        .btn-large { 
+            padding: 14px 30px; 
+            font-size: 1em;
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .button-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            justify-content: flex-start;
+            margin-top: 10px;
+        }
+        
+        .results-section { margin-top: 20px; }
+        .result-card {
+            background: white;
+            border: 3px solid #667eea;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .result-card.route-b { border-color: #11998e; }
+        .result-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        .result-card.route-b h3 { color: #11998e; }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin: 15px 0;
+        }
+        .summary-item {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 8px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .summary-item.route-b {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+        .summary-item .label { 
+            font-size: 0.7em; 
+            opacity: 0.9;
+            margin-bottom: 4px;
+        }
+        .summary-item .value {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin: 4px 0;
+            word-break: break-all;
+        }
+        
+        .check-result {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: 600;
+            font-size: 1em;
+            text-align: center;
+        }
+        .check-result.pass {
+            background: #d4edda;
+            color: #155724;
+            border: 3px solid #c3e6cb;
+        }
+        .check-result.fail {
+            background: #f8d7da;
+            color: #721c24;
+            border: 3px solid #f5c6cb;
+        }
+        
+        .detail-section {
+            margin-top: 15px;
+        }
+        .detail-section h4 {
+            font-size: 0.95em;
+            margin-bottom: 10px;
+            color: #495057;
+        }
+        
+        .detail-table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .detail-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8em;
+            min-width: 100%;
+        }
+        .detail-table th, .detail-table td {
+            padding: 8px 4px;
+            text-align: center;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .detail-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        .detail-table tr.fail { background: #f8d7da; }
+        .detail-table tr.pass { background: #d4edda; }
+        
+        .summary-table {
+            width: 100%;
+            font-size: 0.85em;
+            margin-top: 10px;
+        }
+        .summary-table td {
+            padding: 8px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .summary-table td:first-child {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        /* スマホでの見やすさ向上 */
+        @media (max-width: 600px) {
+            .header h1 { font-size: 1.2em; }
+            .summary-grid { grid-template-columns: 1fr; }
+            .summary-item .value { font-size: 1.4em; }
+        }
+        
+        /* タッチ操作の改善 */
+        button, input, select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📱 水準測量計算システム</h1>
+            <p>スマホ最適化版</p>
+        </div>
+
+        <div class="content">
+            <!-- A線グループ -->
+            <div class="route-group route-a">
+                <div class="route-group-header">
+                    🔵 A線
+                </div>
+                
+                <div class="directions-container">
+                    <!-- A線 往路 -->
+                    <div class="direction-section">
+                        <h3>➡️ 往路</h3>
+                        
+                        <div class="form-group">
+                            <label>開始キロ程</label>
+                            <input type="text" id="startKmA1" placeholder="例: 9K090m" onchange="syncKilometers('A')">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>終了キロ程</label>
+                            <input type="text" id="endKmA1" placeholder="例: 9K340m" onchange="syncKilometers('A')">
+                        </div>
+                        
+                        <h4 style="margin-top: 12px; margin-bottom: 8px; color: #495057; font-size: 0.9em; font-weight: 600;">測点データ</h4>
+                        
+                        <div class="data-table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>測点名</th>
+                                        <th>後視(m)</th>
+                                        <th>前視(m)</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dataTableA1">
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="button-row">
+                            <button class="btn btn-success btn-small" onclick="addRow('A1')">➕ 行追加</button>
+                            <button class="btn btn-danger btn-small" onclick="clearRoute('A')">🗑️ クリア</button>
+                            <button class="btn btn-small" onclick="syncReturn('A')">🔄 復路反映</button>
+                        </div>
+                    </div>
+                    
+                    <!-- A線 復路 -->
+                    <div class="direction-section">
+                        <h3>⬅️ 復路（自動）</h3>
+                        
+                        <div class="form-group">
+                            <label>開始キロ程</label>
+                            <input type="text" id="startKmA2" disabled>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>終了キロ程</label>
+                            <input type="text" id="endKmA2" disabled>
+                        </div>
+                        
+                        <h4 style="margin-top: 12px; margin-bottom: 8px; color: #495057; font-size: 0.9em; font-weight: 600;">測点データ</h4>
+                        
+                        <div class="data-table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>測点名</th>
+                                        <th>後視(m)</th>
+                                        <th>前視(m)</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dataTableA2">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-large" onclick="calculateRoute('A')">
+                    🔬 A線 往復較差チェック
+                </button>
+            </div>
+            
+            <!-- B線グループ -->
+            <div class="route-group route-b">
+                <div class="route-group-header route-b">
+                    🟢 B線
+                </div>
+                
+                <div class="directions-container">
+                    <!-- B線 往路 -->
+                    <div class="direction-section">
+                        <h3>➡️ 往路</h3>
+                        
+                        <div class="form-group">
+                            <label>開始キロ程</label>
+                            <input type="text" id="startKmB1" placeholder="例: 9K090m" onchange="syncKilometers('B')">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>終了キロ程</label>
+                            <input type="text" id="endKmB1" placeholder="例: 9K340m" onchange="syncKilometers('B')">
+                        </div>
+                        
+                        <h4 style="margin-top: 12px; margin-bottom: 8px; color: #495057; font-size: 0.9em; font-weight: 600;">測点データ</h4>
+                        
+                        <div class="data-table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>測点名</th>
+                                        <th>後視(m)</th>
+                                        <th>前視(m)</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dataTableB1">
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="button-row">
+                            <button class="btn btn-success btn-small" onclick="addRow('B1')">➕ 行追加</button>
+                            <button class="btn btn-danger btn-small" onclick="clearRoute('B')">🗑️ クリア</button>
+                            <button class="btn btn-small" onclick="syncReturn('B')">🔄 復路反映</button>
+                        </div>
+                    </div>
+                    
+                    <!-- B線 復路 -->
+                    <div class="direction-section">
+                        <h3>⬅️ 復路（自動）</h3>
+                        
+                        <div class="form-group">
+                            <label>開始キロ程</label>
+                            <input type="text" id="startKmB2" disabled>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>終了キロ程</label>
+                            <input type="text" id="endKmB2" disabled>
+                        </div>
+                        
+                        <h4 style="margin-top: 12px; margin-bottom: 8px; color: #495057; font-size: 0.9em; font-weight: 600;">測点データ</h4>
+                        
+                        <div class="data-table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>測点名</th>
+                                        <th>後視(m)</th>
+                                        <th>前視(m)</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dataTableB2">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-success btn-large" onclick="calculateRoute('B')">
+                    🔬 B線 往復較差チェック
+                </button>
+            </div>
+            
+            <!-- 結果表示セクション -->
+            <div class="results-section">
+                <!-- A線結果 -->
+                <div class="result-card" id="resultCardA" style="display: none;">
+                    <h3>🔵 A線 往復較差チェック結果</h3>
+                    <div id="resultA"></div>
+                </div>
+                
+                <!-- B線結果 -->
+                <div class="result-card route-b" id="resultCardB" style="display: none;">
+                    <h3>🟢 B線 往復較差チェック結果</h3>
+                    <div id="resultB"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 初期化（1行のみ）
+        ['A1', 'B1'].forEach(route => {
+            addRow(route);
+        });
+
+        function parseKilometer(kmStr) {
+            const match = kmStr.match(/(\d+)K(\d+)m?/i);
+            if (match) {
+                return parseInt(match[1]) * 1000 + parseInt(match[2]);
+            }
+            return null;
+        }
+
+        function syncKilometers(route) {
+            const startKm1 = document.getElementById('startKm' + route + '1').value;
+            const endKm1 = document.getElementById('endKm' + route + '1').value;
+            
+            document.getElementById('startKm' + route + '2').value = endKm1;
+            document.getElementById('endKm' + route + '2').value = startKm1;
+        }
+
+        function getNextStationName(routeId) {
+            const table = document.getElementById('dataTable' + routeId);
+            const rows = table.getElementsByTagName('tr');
+            
+            console.log('getNextStationName called for:', routeId);
+            console.log('Number of rows:', rows.length);
+            
+            // 復路の場合は空文字を返す
+            const isReturn = routeId.endsWith('2');
+            if (isReturn) {
+                return '';
+            }
+            
+            // テーブルが空の場合はデフォルト値
+            if (rows.length === 0) {
+                console.log('No rows, returning default');
+                if (routeId.startsWith('A')) {
+                    return 'A-1';
+                } else if (routeId.startsWith('B')) {
+                    return 'B-1';
+                }
+                return '';
+            }
+            
+            // 最後の行の測点名を取得
+            const lastRow = rows[rows.length - 1];
+            const inputs = lastRow.getElementsByTagName('input');
+            
+            console.log('Number of inputs in last row:', inputs.length);
+            
+            // 入力フィールドがない場合
+            if (!inputs || inputs.length === 0) {
+                console.log('No inputs found');
+                if (routeId.startsWith('A')) {
+                    return 'A-1';
+                } else if (routeId.startsWith('B')) {
+                    return 'B-1';
+                }
+                return '';
+            }
+            
+            const lastInput = inputs[0];
+            const lastName = (lastInput && lastInput.value) ? lastInput.value.trim() : '';
+            
+            console.log('Last station name:', lastName);
+            
+            // 最後の行が空の場合
+            if (!lastName) {
+                console.log('Last name is empty');
+                if (routeId.startsWith('A')) {
+                    return 'A-1';
+                } else if (routeId.startsWith('B')) {
+                    return 'B-1';
+                }
+                return '';
+            }
+            
+            // 測点名のパターンマッチングとインクリメント
+            
+            // パターン1: A-1, B-2, A-10 など (文字-数字)
+            let match = lastName.match(/^([A-Za-z]+)-(\d+)$/);
+            if (match) {
+                const prefix = match[1];
+                const num = parseInt(match[2]);
+                const result = prefix + '-' + (num + 1);
+                console.log('Pattern 1 matched:', lastName, '->', result);
+                return result;
+            }
+            
+            // パターン2: KBM1, TP1, A1 など (文字+数字、ハイフンなし)
+            match = lastName.match(/^([A-Za-z]+)(\d+)$/);
+            if (match) {
+                const prefix = match[1];
+                const num = parseInt(match[2]);
+                const result = prefix + (num + 1);
+                console.log('Pattern 2 matched:', lastName, '->', result);
+                return result;
+            }
+            
+            // パターン3: 数字のみ (1, 2, 3...)
+            match = lastName.match(/^(\d+)$/);
+            if (match) {
+                const num = parseInt(match[1]);
+                const result = (num + 1).toString();
+                console.log('Pattern 3 matched:', lastName, '->', result);
+                return result;
+            }
+            
+            // どのパターンにも一致しない場合はデフォルト
+            console.log('No pattern matched, using default');
+            if (routeId.startsWith('A')) {
+                return 'A-' + (rows.length + 1);
+            } else if (routeId.startsWith('B')) {
+                return 'B-' + (rows.length + 1);
+            }
+            
+            return '';
+        }
+
+        function addRow(routeId) {
+            const table = document.getElementById('dataTable' + routeId);
+            const isReturn = routeId.endsWith('2');
+            
+            // 次の測点名を計算（行を追加する前に）
+            let nextStationName = '';
+            if (!isReturn) {
+                const existingRows = table.getElementsByTagName('tr');
+                
+                if (existingRows.length === 0) {
+                    // 最初の行
+                    if (routeId.startsWith('A')) {
+                        nextStationName = 'A-1';
+                    } else if (routeId.startsWith('B')) {
+                        nextStationName = 'B-1';
+                    }
+                } else {
+                    // 最後の行から測点名を取得
+                    const lastRow = existingRows[existingRows.length - 1];
+                    const lastInputs = lastRow.getElementsByTagName('input');
+                    
+                    if (lastInputs && lastInputs.length > 0) {
+                        const lastName = lastInputs[0].value ? lastInputs[0].value.trim() : '';
+                        
+                        if (lastName) {
+                            // パターンマッチングでインクリメント
+                            let match = lastName.match(/^([A-Za-z]+)-(\d+)$/);
+                            if (match) {
+                                nextStationName = match[1] + '-' + (parseInt(match[2]) + 1);
+                            } else {
+                                match = lastName.match(/^([A-Za-z]+)(\d+)$/);
+                                if (match) {
+                                    nextStationName = match[1] + (parseInt(match[2]) + 1);
+                                } else {
+                                    match = lastName.match(/^(\d+)$/);
+                                    if (match) {
+                                        nextStationName = (parseInt(match[1]) + 1).toString();
+                                    } else {
+                                        // デフォルト
+                                        if (routeId.startsWith('A')) {
+                                            nextStationName = 'A-' + (existingRows.length + 1);
+                                        } else if (routeId.startsWith('B')) {
+                                            nextStationName = 'B-' + (existingRows.length + 1);
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            // 空の場合
+                            if (routeId.startsWith('A')) {
+                                nextStationName = 'A-' + (existingRows.length + 1);
+                            } else if (routeId.startsWith('B')) {
+                                nextStationName = 'B-' + (existingRows.length + 1);
+                            }
+                        }
+                    } else {
+                        // inputが見つからない場合
+                        if (routeId.startsWith('A')) {
+                            nextStationName = 'A-' + (existingRows.length + 1);
+                        } else if (routeId.startsWith('B')) {
+                            nextStationName = 'B-' + (existingRows.length + 1);
+                        }
+                    }
+                }
+                
+                console.log('Calculated next name:', nextStationName);
+            }
+            
+            // 行を追加
+            const row = table.insertRow(-1);
+            
+            if (isReturn) {
+                row.innerHTML = `
+                    <td><input type="text" value="" disabled></td>
+                    <td><input type="number" step="0.0001" inputmode="decimal"></td>
+                    <td><input type="number" step="0.0001" inputmode="decimal"></td>
+                    <td></td>
+                `;
+            } else {
+                row.innerHTML = `
+                    <td><input type="text" value="${nextStationName}" onchange="syncReturn('${routeId.charAt(0)}')"></td>
+                    <td><input type="number" step="0.0001" inputmode="decimal"></td>
+                    <td><input type="number" step="0.0001" inputmode="decimal"></td>
+                    <td><button class="btn btn-danger btn-small" onclick="deleteRow(this, '${routeId.charAt(0)}')" style="padding: 4px 8px; margin: 0;">❌</button></td>
+                `;
+            }
+        }
+
+        function deleteRow(btn, route) {
+            const row = btn.parentNode.parentNode;
+            row.parentNode.removeChild(row);
+            syncReturn(route);
+        }
+
+        function clearRoute(route) {
+            document.getElementById('dataTable' + route + '1').innerHTML = '';
+            document.getElementById('dataTable' + route + '2').innerHTML = '';
+            document.getElementById('startKm' + route + '1').value = '';
+            document.getElementById('endKm' + route + '1').value = '';
+            document.getElementById('startKm' + route + '2').value = '';
+            document.getElementById('endKm' + route + '2').value = '';
+            addRow(route + '1');
+        }
+
+        function syncReturn(route) {
+            const table1 = document.getElementById('dataTable' + route + '1');
+            const rows1 = table1.getElementsByTagName('tr');
+            const stationNames = [];
+            
+            for (let row of rows1) {
+                const inputs = row.getElementsByTagName('input');
+                const name = inputs[0].value.trim();
+                if (name) {
+                    stationNames.push(name);
+                }
+            }
+            
+            const table2 = document.getElementById('dataTable' + route + '2');
+            table2.innerHTML = '';
+            
+            const reversedNames = [...stationNames].reverse();
+            reversedNames.forEach(name => {
+                const row = table2.insertRow();
+                row.innerHTML = `
+                    <td><input type="text" value="${name}" disabled></td>
+                    <td><input type="number" step="0.0001" inputmode="decimal"></td>
+                    <td><input type="number" step="0.0001" inputmode="decimal"></td>
+                    <td></td>
+                `;
+            });
+            
+            syncKilometers(route);
+        }
+
+        function collectData(routeId) {
+            const startKm = document.getElementById('startKm' + routeId).value;
+            const endKm = document.getElementById('endKm' + routeId).value;
+            
+            const table = document.getElementById('dataTable' + routeId);
+            const rows = table.getElementsByTagName('tr');
+            const stations = [];
+            
+            for (let row of rows) {
+                const inputs = row.getElementsByTagName('input');
+                const name = inputs[0].value.trim();
+                const backsight = parseFloat(inputs[1].value);
+                const foresight = parseFloat(inputs[2].value);
+                
+                if (name && (backsight || foresight)) {
+                    stations.push({
+                        name: name,
+                        backsight: backsight || null,
+                        foresight: foresight || null
+                    });
+                }
+            }
+            
+            for (let station of stations) {
+                if (station.backsight === null && station.foresight !== null) {
+                    station.backsight = station.foresight;
+                }
+            }
+            
+            let distance = 0;
+            if (startKm && endKm) {
+                const start = parseKilometer(startKm);
+                const end = parseKilometer(endKm);
+                if (start !== null && end !== null) {
+                    distance = Math.abs(end - start) / 1000;
+                }
+            }
+            
+            const tolerance = 2.5 * Math.sqrt(distance);
+            
+            const heightDiffs = [];
+            let totalHeightDiff = 0;
+            
+            for (let i = 0; i < stations.length - 1; i++) {
+                const current = stations[i];
+                const next = stations[i + 1];
+                
+                if (current.backsight !== null && next.foresight !== null) {
+                    const diff = current.backsight - next.foresight;
+                    heightDiffs.push({
+                        from: current.name,
+                        to: next.name,
+                        diff: diff
+                    });
+                    totalHeightDiff += diff;
+                }
+            }
+            
+            return {
+                routeId: routeId,
+                distance: distance,
+                tolerance: tolerance,
+                stations: stations,
+                heightDiffs: heightDiffs,
+                totalHeightDiff: totalHeightDiff
+            };
+        }
+
+        function calculateRoute(route) {
+            const data1 = collectData(route + '1');
+            const data2 = collectData(route + '2');
+            
+            if (data1.stations.length === 0 || data2.stations.length === 0) {
+                alert(route + '線の往路と復路の両方にデータを入力してください');
+                return;
+            }
+            
+            displayRouteComparison(route, data1, data2);
+            document.getElementById('resultCard' + route).style.display = 'block';
+            
+            // 結果までスムーズにスクロール
+            setTimeout(() => {
+                document.getElementById('resultCard' + route).scrollIntoView({ 
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }, 100);
+        }
+
+        function displayRouteComparison(route, data1, data2) {
+            let html = '';
+            
+            const isRouteB = route === 'B';
+            const colorClass = isRouteB ? 'route-b' : '';
+            
+            const roundtripDiff = data1.totalHeightDiff + data2.totalHeightDiff;
+            const tolerance = Math.max(data1.tolerance, data2.tolerance);
+            const isPassing = Math.abs(roundtripDiff) * 1000 <= tolerance;
+            
+            html += '<div class="summary-grid">';
+            html += '<div class="summary-item ' + colorClass + '">';
+            html += '<div class="label">往復較差</div>';
+            html += '<div class="value">' + roundtripDiff.toFixed(4) + '</div>';
+            html += '<div class="label">m</div>';
+            html += '</div>';
+            
+            html += '<div class="summary-item ' + colorClass + '">';
+            html += '<div class="label">往復較差</div>';
+            html += '<div class="value">' + (roundtripDiff * 1000).toFixed(2) + '</div>';
+            html += '<div class="label">mm</div>';
+            html += '</div>';
+            
+            html += '<div class="summary-item ' + colorClass + '">';
+            html += '<div class="label">許容値</div>';
+            html += '<div class="value">±' + tolerance.toFixed(2) + '</div>';
+            html += '<div class="label">mm</div>';
+            html += '</div>';
+            html += '</div>';
+            
+            html += '<div class="check-result ' + (isPassing ? 'pass' : 'fail') + '">';
+            if (isPassing) {
+                html += '✅ 合格<br>';
+                html += '<span style="font-size: 0.85em;">往復較差が許容値以内です</span>';
+            } else {
+                html += '❌ 不合格<br>';
+                html += '<span style="font-size: 0.85em;">往復較差が許容値を超えています</span>';
+            }
+            html += '</div>';
+            
+            html += '<div class="detail-section">';
+            html += '<h4>📍 測点別往復較差（許容値±0.0005m）</h4>';
+            html += '<div class="detail-table-container">';
+            html += '<table class="detail-table">';
+            html += '<thead><tr><th>測点</th><th>往路<br>(m)</th><th>復路<br>(m)</th><th>較差<br>(m)</th><th>判定</th></tr></thead>';
+            html += '<tbody>';
+            
+            const stationChecks = [];
+            let allStationsPassed = true;
+            
+            for (let i = 0; i < data1.heightDiffs.length; i++) {
+                const forward = data1.heightDiffs[i];
+                const backward = data2.heightDiffs.find(d => 
+                    d.from === forward.to && d.to === forward.from
+                );
+                
+                if (backward) {
+                    const stationDiff = forward.diff + backward.diff;
+                    const passed = Math.abs(stationDiff) <= 0.0005;
+                    stationChecks.push({
+                        station: forward.from + '→' + forward.to,
+                        forwardDiff: forward.diff,
+                        backwardDiff: backward.diff,
+                        diff: stationDiff,
+                        passed: passed
+                    });
+                    
+                    if (!passed) {
+                        allStationsPassed = false;
+                    }
+                }
+            }
+            
+            stationChecks.forEach(check => {
+                const rowClass = check.passed ? 'pass' : 'fail';
+                html += '<tr class="' + rowClass + '">';
+                html += '<td>' + check.station + '</td>';
+                html += '<td>' + check.forwardDiff.toFixed(4) + '</td>';
+                html += '<td>' + check.backwardDiff.toFixed(4) + '</td>';
+                html += '<td>' + check.diff.toFixed(4) + '</td>';
+                html += '<td>' + (check.passed ? '✅' : '❌') + '</td>';
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            html += '</div>';
+            html += '</div>';
+            
+            if (allStationsPassed && stationChecks.length > 0) {
+                html += '<div class="check-result pass">';
+                html += '✅ 全測点で許容値内';
+                html += '</div>';
+            } else if (stationChecks.length > 0) {
+                html += '<div class="check-result fail">';
+                html += '❌ 一部測点で許容値超過';
+                html += '</div>';
+            }
+            
+            html += '<div class="detail-section">';
+            html += '<h4>📊 詳細データ</h4>';
+            html += '<table class="summary-table">';
+            html += '<tr><td>往路 視準距離</td><td>' + data1.distance.toFixed(3) + ' km</td></tr>';
+            html += '<tr><td>復路 視準距離</td><td>' + data2.distance.toFixed(3) + ' km</td></tr>';
+            html += '<tr><td>往路 比高差合計</td><td>' + data1.totalHeightDiff.toFixed(4) + ' m</td></tr>';
+            html += '<tr><td>復路 比高差合計</td><td>' + data2.totalHeightDiff.toFixed(4) + ' m</td></tr>';
+            html += '<tr><td>往復較差</td><td>' + roundtripDiff.toFixed(4) + ' m</td></tr>';
+            html += '<tr><td>許容値</td><td>±' + tolerance.toFixed(2) + ' mm</td></tr>';
+            html += '<tr style="border-top: 2px solid #495057;"><td><strong>全体判定</strong></td><td><strong style="color: ' + (isPassing ? '#155724' : '#721c24') + ';">' + (isPassing ? '✅ 合格' : '❌ 不合格') + '</strong></td></tr>';
+            html += '<tr><td><strong>測点別判定</strong></td><td><strong style="color: ' + (allStationsPassed ? '#155724' : '#721c24') + ';">' + (allStationsPassed ? '✅ 全測点OK' : '❌ 一部NG') + '</strong></td></tr>';
+            html += '</table>';
+            html += '</div>';
+            
+            document.getElementById('result' + route).innerHTML = html;
+        }
+    </script>
+</body>
+</html>
